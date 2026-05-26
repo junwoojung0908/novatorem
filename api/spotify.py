@@ -341,3 +341,17 @@ def get_now_playing() -> dict[str, Any]:
         "artist_url": track_info.artist_url,
         "audio_features": audio_features.to_dict() if audio_features else None,
     }
+
+def get_top_artists(time_range: str = "medium_term", limit: int = 5) -> list:
+    """Get top artists for given time range (short_term / medium_term / long_term)."""
+    url = f"https://api.spotify.com/v1/me/top/artists?time_range={time_range}&limit={limit}"
+    data = _api_get(url)
+    return [{"name": item["name"], "url": item["external_urls"]["spotify"]} for item in data.get("items", [])]
+
+
+def get_top_tracks(time_range: str = "medium_term", limit: int = 5) -> list:
+    """Get top tracks for given time range (short_term / medium_term / long_term)."""
+    url = f"https://api.spotify.com/v1/me/top/tracks?time_range={time_range}&limit={limit}"
+    data = _api_get(url)
+    return [{"name": item["name"], "artist": item["artists"][0]["name"], "url": item["external_urls"]["spotify"]} for item in data.get("items", [])]
+
