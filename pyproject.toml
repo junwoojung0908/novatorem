@@ -1,6 +1,0 @@
-[project]
-name = "novatorem"
-version = "0.1.0"
-
-[tool.vercel]
-entrypoint = "api.orchestrator:app"
