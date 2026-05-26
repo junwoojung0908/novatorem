@@ -668,6 +668,72 @@ def redirect_to_song() -> Response:
     return redirect(fallback_url)
 
 
+
+
+def _escape_xml(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _make_top_svg(items: list, label: str, mode: str) -> str:
+    row_h = 28
+    height = 55 + len(items) * row_h + 10
+    rows = ""
+    for i, item in enumerate(items):
+        y = 52 + i * row_h
+        name = _escape_xml(item.get("name", ""))
+        sub = _escape_xml(item.get("artist", "")) if mode == "tracks" else ""
+        display = name + (" — " + sub if sub else "")
+        max_len = min(len(display) * 7, 230)
+        rows += (
+            f'<text x="34" y="{y}" fill="#1DB954" font-size="11.5" '
+            f'font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" '
+            f'font-weight="700">{i + 1}</text>'
+            f'<text x="50" y="{y}" fill="#ffffff" font-size="12.5" '
+            f'font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" '
+            f'textLength="{max_len}" lengthAdjust="spacingAndGlyphs">{display}</text>'
+        )
+    return (
+        f'<svg width="300" height="{height}" xmlns="http://www.w3.org/2000/svg">'
+        f'<rect width="300" height="{height}" rx="12" fill="#181414"/>'
+        f'<text x="16" y="22" fill="#aaaaaa" font-size="10.5" '
+        f'font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" '
+        f'letter-spacing="0.08em">{_escape_xml(label)}</text>'
+        f'<line x1="16" y1="30" x2="284" y2="30" stroke="#282828" stroke-width="1"/>'
+        f'{rows}</svg>'
+    )
+
+
+@app.route("/top-artists")
+def top_artists_route() -> Response:
+    time_range = request.args.get("time_range", "medium_term")
+    labels = {"short_term": "Last 4 weeks", "medium_term": "Last 6 months", "long_term": "All time"}
+    label = labels.get(time_range, time_range)
+    try:
+        from .spotify import get_top_artists
+        items = get_top_artists(time_range=time_range, limit=5)
+    except Exception:
+        items = []
+    svg = _make_top_svg(items, label, "artists")
+    resp = Response(svg, mimetype="image/svg+xml")
+    resp.headers["Cache-Control"] = "s-maxage=3600"
+    return resp
+
+
+@app.route("/top-tracks")
+def top_tracks_route() -> Response:
+    time_range = request.args.get("time_range", "medium_term")
+    labels = {"short_term": "Last 4 weeks", "medium_term": "Last 6 months", "long_term": "All time"}
+    label = labels.get(time_range, time_range)
+    try:
+        from .spotify import get_top_tracks
+        items = get_top_tracks(time_range=time_range, limit=5)
+    except Exception:
+        items = []
+    svg = _make_top_svg(items, label, "tracks")
+    resp = Response(svg, mimetype="image/svg+xml")
+    resp.headers["Cache-Control"] = "s-maxage=3600"
+    return resp
+
 @app.route("/health")
 def health_check() -> Response:
     """Health check endpoint for monitoring."""
